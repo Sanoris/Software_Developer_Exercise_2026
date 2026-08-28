@@ -88,127 +88,126 @@
 </head>
 <body>
 
-  <h2>Patient Database Search</h2>
+    <h2>Patient Database Search</h2>
 
-  <!-- Server-Side Filter Inputs -->
-  <div class="filter-container">
-    <div class="filter-group">
-      <label for="filter-firstname">First Name</label>
-      <input type="text" id="filter-firstname" placeholder="Search first name...">
+    <!-- Server-Side Filter Inputs -->
+    <div class="filter-container">
+        <div class="filter-group">
+            <label for="filter-firstname">First Name</label>
+            <input type="text" id="filter-firstname" placeholder="Search first name...">
+        </div>
+
+        <div class="filter-group">
+            <label for="filter-lastname">Last Name</label>
+            <input type="text" id="filter-lastname" placeholder="Search last name...">
+        </div>
+
+        <div class="filter-group">
+            <label for="filter-state">State</label>
+            <input type="text" id="filter-state" placeholder="Search state (e.g. CA)...">
+        </div>
+
+        <div class="filter-group">
+            <label for="filter-diagnosis">Cancer Diagnosis</label>
+            <input type="text" id="filter-diagnosis" placeholder="Search diagnosis...">
+        </div>
+
+        <div class="filter-group">
+            <label for="filter-genes">Genes</label>
+            <input type="text" id="filter-genes" placeholder="Search gene (e.g. BRCA1)...">
+        </div>
+
+        <button id="search-button" onclick="fetchFilteredData()">Search</button>
     </div>
 
-    <div class="filter-group">
-      <label for="filter-lastname">Last Name</label>
-      <input type="text" id="filter-lastname" placeholder="Search last name...">
-    </div>
 
-    <div class="filter-group">
-      <label for="filter-state">State</label>
-      <input type="text" id="filter-state" placeholder="Search state (e.g. CA)...">
-    </div>
 
-    <div class="filter-group">
-      <label for="filter-diagnosis">Cancer Diagnosis</label>
-      <input type="text" id="filter-diagnosis" placeholder="Search diagnosis...">
-    </div>
+    <!-- Table -->
+    <table id="patient-table">
+        <thead>
+            <tr>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Gender</th>
+            <th>Address</th>
+            <th>City</th>
+            <th>State</th>
+            <th>Zip Code</th>
+            <th>Phone</th>
+            <th>Cancer Diagnosis</th>
+            <th>Genes</th>
+            </tr>
+        </thead>
+        <tbody id="table-body">
+            <!-- Rows rendered dynamically from Flask endpoint -->
+        </tbody>
+    </table>
 
-    <div class="filter-group">
-      <label for="filter-genes">Genes</label>
-      <input type="text" id="filter-genes" placeholder="Search gene (e.g. BRCA1)...">
-    </div>
-  </div>
+    <div id="status-message" class="status-message">Loading data...</div>
 
-  <!-- Table -->
-  <table id="patient-table">
-    <thead>
-      <tr>
-        <th>First Name</th>
-        <th>Last Name</th>
-        <th>State</th>
-        <th>Cancer Diagnosis</th>
-        <th>Genes</th>
-      </tr>
-    </thead>
-    <tbody id="table-body">
-      <!-- Rows rendered dynamically from Flask endpoint -->
-    </tbody>
-  </table>
+    <script>
+        const tableBody = document.getElementById("table-body");
+        const statusMessage = document.getElementById("status-message");
+        const firstNameInput = document.getElementById("filter-firstname");
+        const lastNameInput = document.getElementById("filter-lastname");
+        const stateInput = document.getElementById("filter-state");
+        const diagnosisInput = document.getElementById("filter-diagnosis");
+        const genesInput = document.getElementById("filter-genes");
 
-  <div id="status-message" class="status-message">Loading data...</div>
+        let debounceTimer;
 
-  <script>
-    const tableBody = document.getElementById("table-body");
-    const statusMessage = document.getElementById("status-message");
+        // Fetch filtered data directly from Flask endpoint
+        async function fetchFilteredData() {
+            // Build query parameters based on user input
+            const params = new URLSearchParams({
+                first_name: firstNameInput.value,
+                last_name: lastNameInput.value,
+                state: stateInput.value,
+                diagnosis: diagnosisInput.value,
+                genes: genesInput.value
+            });
 
-    const firstNameInput = document.getElementById("filter-firstname");
-    const lastNameInput = document.getElementById("filter-lastname");
-    const stateInput = document.getElementById("filter-state");
-    const diagnosisInput = document.getElementById("filter-diagnosis");
-    const genesInput = document.getElementById("filter-genes");
+            try {
+                const response = await fetch(`/api/patients?${params.toString()}`);
+                if (!response.ok) throw new Error("Server communication failed.");
+                
+                const data = await response.json();
+                renderTable(data);
+            } catch (error) {
+                console.error("Fetch error:", error);
+                statusMessage.textContent = "Error fetching data from server.";
+                statusMessage.style.display = "block";
+            }
+        }
 
-    let debounceTimer;
+        // Dynamic row generation
+        function renderTable(data) {
+            tableBody.innerHTML = "";
+            
+            if (data.length === 0) {
+                statusMessage.textContent = "No matching records found.";
+                statusMessage.style.display = "block";
+                return;
+            }
 
-    // Fetch filtered data directly from Flask endpoint
-    async function fetchFilteredData() {
-      // Build query parameters based on user input
-      const params = new URLSearchParams({
-        first_name: firstNameInput.value,
-        last_name: lastNameInput.value,
-        state: stateInput.value,
-        diagnosis: diagnosisInput.value,
-        genes: genesInput.value
-      });
-
-      try {
-        const response = await fetch(`/api/patients?${params.toString()}`);
-        if (!response.ok) throw new Error("Server communication failed.");
-        
-        const data = await response.json();
-        renderTable(data);
-      } catch (error) {
-        console.error("Fetch error:", error);
-        statusMessage.textContent = "Error fetching data from server.";
-        statusMessage.style.display = "block";
-      }
-    }
-
-    // Dynamic row generation
-    function renderTable(data) {
-      tableBody.innerHTML = "";
-      
-      if (data.length === 0) {
-        statusMessage.textContent = "No matching records found.";
-        statusMessage.style.display = "block";
-        return;
-      }
-
-      statusMessage.style.display = "none";
-      data.forEach(patient => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${patient.first_name ?? ''}</td>
-          <td>${patient.last_name ?? ''}</td>
-          <td>${patient.state ?? ''}</td>
-          <td>${patient.diagnosis ?? ''}</td>
-          <td>${patient.genes ?? ''}</td>
-        `;
-        tableBody.appendChild(row);
-      });
-    }
-
-    // Debounce wrapper to restrict API calls while typing
-    function handleInput() {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(fetchFilteredData, 300);
-    }
-
-    // Attach listeners across all search fields
-    [firstNameInput, lastNameInput, stateInput, diagnosisInput, genesInput].forEach(input => {
-      input.addEventListener("input", handleInput);
-    });
-
-    // Run query on page load to retrieve initial dataset
-    fetchFilteredData();
-  </script>
+            statusMessage.style.display = "none";
+            data.forEach(patient => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${patient.first_name ?? ''}</td>
+                    <td>${patient.last_name ?? ''}</td>
+                    <td>${patient.gender ?? ''}</td>
+                    <td>${patient.street_address ?? ''}</td>
+                    <td>${patient.city ?? ''}</td>
+                    <td>${patient.state ?? ''}</td>
+                    <td>${patient.zip_code ?? ''}</td>
+                    <td>${patient.phone ?? ''}</td>
+                    <td>${patient.diagnosis ?? ''}</td>
+                    <td>${patient.gene ?? ''}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+    </script>
 </body>
 </html>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patient Data Search</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    .filter-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 25px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .filter-group label {
+      font-weight: bold;
+      font-size: 0.85rem;
+      margin-bottom: 5px;
+      color: #555;
+    }
+
+    .filter-group input {
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+
+    .filter-group input:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #007bff;
+      color: white;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+
+    .status-message {
+      text-align: center;
+      padding: 20px;
+      font-style: italic;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Patient Database Search</h2>
+
+  <!-- Server-Side Filter Inputs -->
+  <div class="filter-container">
+    <div class="filter-group">
+      <label for="filter-firstname">First Name</label>
+      <input type="text" id="filter-firstname" placeholder="Search first name...">
+    </div>
+
+    <div class="filter-group">
+      <label for="filter-lastname">Last Name</label>
+      <input type="text" id="filter-lastname" placeholder="Search last name...">
+    </div>
+
+    <div class="filter-group">
+      <label for="filter-state">State</label>
+      <input type="text" id="filter-state" placeholder="Search state (e.g. CA)...">
+    </div>
+
+    <div class="filter-group">
+      <label for="filter-diagnosis">Cancer Diagnosis</label>
+      <input type="text" id="filter-diagnosis" placeholder="Search diagnosis...">
+    </div>
+
+    <div class="filter-group">
+      <label for="filter-genes">Genes</label>
+      <input type="text" id="filter-genes" placeholder="Search gene (e.g. BRCA1)...">
+    </div>
+  </div>
+
+  <!-- Table -->
+  <table id="patient-table">
+    <thead>
+      <tr>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>State</th>
+        <th>Cancer Diagnosis</th>
+        <th>Genes</th>
+      </tr>
+    </thead>
+    <tbody id="table-body">
+      <!-- Rows rendered dynamically from Flask endpoint -->
+    </tbody>
+  </table>
+
+  <div id="status-message" class="status-message">Loading data...</div>
+
+  <script>
+    const tableBody = document.getElementById("table-body");
+    const statusMessage = document.getElementById("status-message");
+
+    const firstNameInput = document.getElementById("filter-firstname");
+    const lastNameInput = document.getElementById("filter-lastname");
+    const stateInput = document.getElementById("filter-state");
+    const diagnosisInput = document.getElementById("filter-diagnosis");
+    const genesInput = document.getElementById("filter-genes");
+
+    let debounceTimer;
+
+    // Fetch filtered data directly from Flask endpoint
+    async function fetchFilteredData() {
+      // Build query parameters based on user input
+      const params = new URLSearchParams({
+        first_name: firstNameInput.value,
+        last_name: lastNameInput.value,
+        state: stateInput.value,
+        diagnosis: diagnosisInput.value,
+        genes: genesInput.value
+      });
+
+      try {
+        const response = await fetch(`/api/patients?${params.toString()}`);
+        if (!response.ok) throw new Error("Server communication failed.");
+        
+        const data = await response.json();
+        renderTable(data);
+      } catch (error) {
+        console.error("Fetch error:", error);
+        statusMessage.textContent = "Error fetching data from server.";
+        statusMessage.style.display = "block";
+      }
+    }
+
+    // Dynamic row generation
+    function renderTable(data) {
+      tableBody.innerHTML = "";
+      
+      if (data.length === 0) {
+        statusMessage.textContent = "No matching records found.";
+        statusMessage.style.display = "block";
+        return;
+      }
+
+      statusMessage.style.display = "none";
+      data.forEach(patient => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${patient.first_name ?? ''}</td>
+          <td>${patient.last_name ?? ''}</td>
+          <td>${patient.state ?? ''}</td>
+          <td>${patient.diagnosis ?? ''}</td>
+          <td>${patient.genes ?? ''}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    // Debounce wrapper to restrict API calls while typing
+    function handleInput() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(fetchFilteredData, 300);
+    }
+
+    // Attach listeners across all search fields
+    [firstNameInput, lastNameInput, stateInput, diagnosisInput, genesInput].forEach(input => {
+      input.addEventListener("input", handleInput);
+    });
+
+    // Run query on page load to retrieve initial dataset
+    fetchFilteredData();
+  </script>
+</body>
+</html>

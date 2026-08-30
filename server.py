@@ -1,7 +1,8 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 import pandas as pd
+import os
 
-app = Flask(__name__, static_folder='static', static_url_path='/static')
+app = Flask(__name__, static_folder='./frontend/dist', static_url_path='')
 
 patient_details = pd.read_csv("./data/fake_patient_details.csv")
 patient_diagnosis = pd.read_csv("./data/fake_patient_diagnosis.csv")
@@ -9,10 +10,6 @@ patient_genes = pd.read_csv("./data/fake_patient_genes.csv")
 
 df = pd.merge(patient_details, patient_diagnosis, on="patient_id")
 df = pd.merge(df, patient_genes, on="patient_id")
-
-@app.route("/")
-def home():
-    return app.send_static_file("home.html")
 
 @app.route("/api/patients", methods=["GET"])
 def get_patients():
@@ -31,6 +28,16 @@ def get_patients():
     ]
 
     return jsonify(filtered_df.to_dict(orient="records"))
+
+# Serve static files and handle client-side routing fallback
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    # Return specific static file if it exists, otherwise fall back to index.html
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

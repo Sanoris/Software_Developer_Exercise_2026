@@ -2,7 +2,7 @@ import { useState } from 'react';
 import './App.css';
 
 type Patient = {
-  id: number;
+  patient_id: string;
   first_name: string;
   last_name: string;
   gender: string;
@@ -126,7 +126,7 @@ function PatientTable({ patients }: PatientTableProps) {
       </thead>
       <tbody>
         {patients.map((patient) => (
-          <PatientRow key={patient.id} patient={patient} />
+          <PatientRow key={patient.patient_id} patient={patient} />
         ))}
       </tbody>
     </table>
